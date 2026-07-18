@@ -8,7 +8,8 @@ export const config = {
 
   // Public "fill the form" URL (Google Form -> Send -> link).
   // Leave empty until you have it; the "write a review" button will be disabled.
-  formUrl: "",
+  formUrl:
+    "https://docs.google.com/forms/d/e/1FAIpQLSc1wm6gADnW0s2TsX0TS8-g3fnK9BKZ0RfGbMmBjOTlqZi1QQ/viewform",
 
   // Public CSV of the responses sheet via "File -> Share -> Publish to web -> CSV".
   // This endpoint sends `cache-control: max-age=300`, so the browser caches it for
