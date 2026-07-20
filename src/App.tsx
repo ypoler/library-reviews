@@ -1,5 +1,6 @@
 import { Link, Outlet } from "react-router-dom";
 import bookshelfBg from "./assets/bookshelf-bg.jpg";
+import logo from "./assets/logo.jpg";
 import { config } from "./config";
 import { t } from "./strings";
 import { ModeSwitch } from "./theme";
@@ -18,8 +19,12 @@ export default function App() {
 
       <header className="border-b border-amber-200/70 bg-[#f6f1e7] dark:border-stone-700 dark:bg-stone-900">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl">📚</span>
+          <Link to="/" className="flex items-center gap-3">
+            <img
+              src={logo}
+              alt={config.libraryName}
+              className="h-11 w-11 rounded-full bg-[#fafbbb] object-contain p-1 ring-1 ring-amber-200 dark:ring-stone-700"
+            />
             <div className="leading-tight">
               <div className="text-lg font-bold text-stone-900 dark:text-stone-50">
                 {config.libraryName}

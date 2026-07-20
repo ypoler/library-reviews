@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import logo from "../assets/logo.jpg";
 import { config } from "../config";
 import { prefetchReviews } from "../data";
 import { t } from "../strings";
@@ -17,6 +18,11 @@ export function Home() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-8 text-center">
+        <img
+          src={logo}
+          alt={config.libraryName}
+          className="mx-auto mb-4 h-28 w-28 rounded-full bg-[#fafbbb] object-contain p-2.5 shadow-sm ring-1 ring-amber-200 dark:ring-stone-700 sm:h-32 sm:w-32"
+        />
         <h1 className="text-3xl font-extrabold text-stone-900 dark:text-stone-50 sm:text-4xl">
           {config.libraryName}
         </h1>
