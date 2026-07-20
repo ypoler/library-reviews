@@ -2,7 +2,7 @@ import Papa from "papaparse";
 import { config, HEADER_MAP, rankByValue } from "./config";
 import type { BookGroup, Review } from "./types";
 
-const CACHE_KEY = "library-reviews-cache-v1";
+const CACHE_KEY = "library-reviews-cache-v2";
 
 type CacheShape = {
   fetchedAt: number;

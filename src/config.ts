@@ -16,7 +16,7 @@ export const config = {
   // ~5 min and repeat loads are instant. New form responses appear within a few
   // minutes (Google's publish refresh interval).
   csvUrl:
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ0AVoUec2PLIbt6ty3VMifdLtix1cfcEP5zsZkB_P157Du2aCL3fiS9EJYkr1Vtcm65pFnnyKKhu-7/pub?gid=0&single=true&output=csv",
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vTl4L0RFkLX5xrr3X3CXcs5pQUBk4Q2BG-ORm90yt8-czXZlTz3E7flpSUb-Q2vmLzC4uURw2OLRZQ5/pub?gid=965940565&single=true&output=csv",
 
   // How many book cards to show per "page" before "load more".
   pageSize: 24,
@@ -27,9 +27,9 @@ export const config = {
 export const HEADER_MAP = {
   date: "חותמת זמן",
   book: "שם הספר",
-  author: "שם הסופר/ת",
-  rank: "דירוג",
-  review: "ביקורת מפורטת",
+  author: "שם הסופר",
+  rank: "מה דעתי על הספר",
+  review: "כמה מילים על הספר:",
   reader: "שם הקורא/ת",
 } as const;
 
