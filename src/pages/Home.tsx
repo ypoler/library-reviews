@@ -58,12 +58,12 @@ function FormCard() {
   }
 
   return (
-      <a href={config.formUrl} target="_blank" rel="noreferrer" className={CARD}>
-        <span className="text-3xl">✍️</span>
-        <span className="mt-3 text-xl font-bold">{t.writeReview}</span>
+    <Link to="/write" className={CARD}>
+      <span className="text-3xl">✍️</span>
+      <span className="mt-3 text-xl font-bold">{t.writeReview}</span>
       <span className="mt-1 text-sm text-stone-500 dark:text-stone-400">
         {t.writeReviewSub}
       </span>
-    </a>
+    </Link>
   );
 }

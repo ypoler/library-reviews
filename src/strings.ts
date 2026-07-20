@@ -13,6 +13,10 @@ export const t = {
 
   // Reviews page
   backHome: "חזרה לדף הבית",
+
+  // Write (form) page
+  openFormFullPage: "פתיחת הטופס בחלון חדש",
+  formLoading: "טוען את הטופס...",
   searchPlaceholder: "חיפוש...",
   searchScopeAll: "הכל",
   searchScopeBook: "שם הספר",
