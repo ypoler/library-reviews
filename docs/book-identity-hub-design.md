@@ -33,6 +33,34 @@ reports, lift's local Excel) while giving librarians **one concentrated place**
 to see and fix the title → catalog-ID connections across all three, without
 merging the sources themselves.
 
+### Data sources at a glance
+
+| Source | Current location / format | Exact string stored as this source's key in the hub | How it lands in the hub |
+|---|---|---|---|
+| Reviews | Google Form → published CSV (adults + kids), already live | Raw title exactly as typed in the form (`שם הספר` column) | Already flows in today via `collectReviewBooks_` |
+| New arrivals | Local file on a librarian's computer, downloaded from the catalog system: `דוח ספרים חדשים <date range>.csv`, columns `כותר, מחבר/ת, סימן מדף, שנה, מס. מיון, מוציא לאור`. No catalog ID | Raw title exactly as it appears in the report's `כותר` column | Google Form file-upload → `onFormSubmit` appends to a `ספרים חדשים (גולמי)` raw tab → `collectArrivalsBooks_` reads that tab (see [Ingestion](#ingestion-making-arrivals-collectible)) |
+| Lift (co-borrow) | Local-only Excel from `scripts/lift-calculation/build_related.py`, grouped by `work_key` (trailing-punctuation-folded title), never published | **The group's `display_name(wk)`** — the most common actual raw title spelling within that `work_key` group, *not* the folded `work_key` string itself, since that's an internal grouping key, not a searchable title | Deferred: librarian reviews/approves in Excel → future script pushes approved rows into a `ליפט (גולמי)` raw tab (format/approval shape still open, see [Open questions](#open-questions-deferred-not-blocking-this-doc)) |
+
+**All of the hub itself, the two raw staging tabs above (`ספרים חדשים (גולמי)`,
+`ליפט (גולמי)`), the `לטיפול` triage tab, and the `לוג` log tab are proposed as
+tabs within **one spreadsheet file** — the same file already behind
+`detailsCsvUrl` in `src/config.ts` today, just with more tabs, matching how
+that file already separates its main sheet from `לוג`. The recommendations
+sheet ([below](#reader-facing-recommendations-feature)) is a different concern
+with a different update cadence (tied to lift's approval cycle, not the
+per-book resolution loop) — default proposal is to keep it as another tab in
+that same file for one-spreadsheet-to-manage simplicity, but nothing prevents
+it from being a separate file later if that turns out cleaner; not decided
+either way.
+
+Note that no cross-source title matching ever happens directly between, say, a
+review's raw title and an arrivals raw title — each source's raw string is
+only ever matched against the **external catalog site's own titles**
+independently (via `searchCatalog_`/`pickMatch_`); rows only converge onto one
+book because they resolve to the *same catalog ID*, not because their raw text
+looks alike. So different sources are free to spell/punctuate the same book
+differently without that being a problem to solve.
+
 ## Decisions made so far
 
 - **Hub shape:** one row per canonical book (extends the existing
@@ -48,20 +76,37 @@ merging the sources themselves.
 ## Hub schema
 
 Extends the existing details sheet (today's columns: `שם ספר, מחבר, מזהה כותר,
-קישור לקטלוג, קישור לכריכה, תקציר, סוגה, סטטוס עדכון, עדכון אחרון`).
+קישור לקטלוג, קישור לכריכה, תקציר, סוגה, סטטוס עדכון, עדכון אחרון`). This is
+the **first tab** of the spreadsheet (`ss.getSheets()[0]`, matching how
+`CatalogEnrich.gs` already addresses it today), one row per canonical book,
+frozen header row.
 
-Proposed columns:
+Final proposed column order (`CatalogEnrich.gs`'s `ensureHeaders_` enforces
+this exact order, same as it enforces the current 9-column header today):
 
-| Column | Notes |
-|---|---|
-| `שם ספר` | canonical display title, preferred from the catalog once resolved |
-| `מחבר`, `קישור לכריכה`, `תקציר`, `סוגה` | shared/canonical fields, unchanged |
-| `מזהה כותר` | catalog ID — becomes the true row identity once known |
-| ~~`קישור לקטלוג`~~ | **drop.** Fully derivable client-side as `` `${catalogOrigin}/title-details/?title_no=${id}` ``; shipping it is pure waste (see scaling notes) |
-| `מפתח ביקורות` / `סטטוס ביקורות` | reviews source: raw form title text + retry status |
-| `מפתח ספרים חדשים` / `סטטוס ספרים חדשים` | arrivals source: raw report title text + retry status |
-| `מפתח ליפט` / `סטטוס ליפט` | reserved now; populated once the future lift→sheet script exists |
-| `עדכון אחרון` | unchanged |
+| Col | Header | Type | Example | Written by |
+|---|---|---|---|---|
+| A | `שם ספר` | text | `האי` | script, from the catalog match; a librarian may hand-correct it |
+| B | `מחבר` | text | `קונרד ג'וזף` | script (from catalog details), librarian-correctable |
+| C | `מזהה כותר` | text (opaque catalog ID string) | `U2llM1Fra2dhUFo0R00wNUNyQnpBUT09` | script; **this becomes the row's true identity** once present |
+| D | `קישור לכריכה` | URL | `https://books.agron.org.il/...` | script |
+| E | `תקציר` | long text | `רומן על ימאי צעיר...` | script |
+| F | `סוגה` | text | `פרוזה מתורגמת` | script |
+| G | `מפתח ביקורות` | text | `האי.` | script, from a reviews CSV row |
+| H | `סטטוס ביקורות` | empty / `OK` / `fail` | `OK` | script; librarian may set to `fail` to force-stop retries, or clear to force a retry |
+| I | `מפתח ספרים חדשים` | text | `האי` | script, from the `ספרים חדשים (גולמי)` raw tab |
+| J | `סטטוס ספרים חדשים` | empty / `OK` / `fail` | `` (empty = still pending) | script/librarian, same convention as H |
+| K | `מפתח ליפט` | text (the work's `display_name`, not its `work_key`) | `האי` | script, from the `ליפט (גולמי)` raw tab, once that phase exists |
+| L | `סטטוס ליפט` | empty / `OK` / `fail` | `` | script/librarian, same convention as H |
+| M | `עדכון אחרון` | datetime | `2026-09-20 10:03` | script, set whenever it writes the row |
+
+Dropped versus today: `קישור לקטלוג` — fully derivable client-side as
+`` `${catalogOrigin}/title-details/?title_no=${id}` ``; shipping it is pure
+waste (see [scaling notes](#scaling-does-the-fetch-published-csv-in-the-browser-model-hold)).
+
+A book may have any subset of G/I/K filled in — e.g. a book only known from
+loans (via K/L) may never have a review or an arrivals entry (G/H and I/J stay
+empty), and that's expected, not an error state.
 
 Status values keep today's convention: empty = retry next run, `OK` = resolved
 don't retry, `fail` = don't retry until a librarian clears it.
@@ -94,9 +139,13 @@ under the new multi-source design too and needs no extra mechanism.
 
 Arrivals CSVs aren't published anywhere (they're local files a librarian
 downloads from the catalog system), so they need a raw staging tab in the hub
-spreadsheet, e.g. **`ספרים חדשים (גולמי)`**, holding title/author as columns.
+spreadsheet, **`ספרים חדשים (גולמי)`**, holding title/author as columns.
 `CatalogEnrich.gs` gets a new `collectArrivalsBooks_()` that reads this tab the
-same way `collectReviewBooks_()` reads the reviews CSVs.
+same way `collectReviewBooks_()` reads the reviews CSVs. This tab is populated
+by the Form-upload mechanism in the next section, not by manual paste/`File →
+Import` — see [Ingestion for non-technical
+librarians](#ingestion-for-non-technical-librarians) for how rows actually get
+into it.
 
 ## Ingestion for non-technical librarians
 
@@ -313,6 +362,121 @@ feature.
 - How many recommendations to show (data caps at 10; default proposal is ~5).
 - Whether to surface any "why" signal to readers (e.g. shared-reader count)
   or keep it a black box.
+
+## Sheet structures (detailed)
+
+The hub tab itself is specified above. This section details every other tab
+and sheet referenced elsewhere in this doc, so each has one concrete,
+authoritative structure rather than a description scattered across sections.
+All tabs below live in the **same spreadsheet file** as the hub (see
+[Data sources at a glance](#data-sources-at-a-glance)) unless noted.
+
+### `ספרים חדשים (גולמי)` — raw arrivals staging tab
+
+Populated by the Form/`onFormSubmit` mechanism (never manual paste). Mirrors
+the source report's own columns for full fidelity/audit, plus two ingestion
+metadata columns:
+
+| Col | Header | Type | Notes |
+|---|---|---|---|
+| A | `כותר` | text | used for resolution |
+| B | `מחבר/ת` | text | used for resolution/disambiguation |
+| C | `סימן מדף` | text | shelf mark; librarian reference only, not used by resolution |
+| D | `שנה` | number/text | publication year; reference only |
+| E | `מס. מיון` | text | classification code; reference only |
+| F | `מוציא לאור` | text | publisher; reference only |
+| G | `קובץ מקור` | text | the uploaded filename, e.g. `דוח ספרים חדשים 20.8-7.9.csv` |
+| H | `יובא בתאריך` | datetime | the Form submission time |
+
+`onFormSubmit` appends a row only if its normalized title (`normalizeTitle_`)
+isn't already present in column A of this tab — so re-uploading the same or an
+overlapping report is a no-op, not a duplicate. `collectArrivalsBooks_` reads
+only columns A and B; C–F ride along for the librarian's own reference and
+play no role in resolution.
+
+### `ליפט (גולמי)` — raw lift staging tab (future phase, format may change)
+
+Same role as the arrivals raw tab — a pending-resolution queue — but lift's
+loan data carries no author field:
+
+| Col | Header | Type | Notes |
+|---|---|---|---|
+| A | `כותר` | text | the work's `display_name`, used for resolution |
+| B | `קוראים` | number | reader count for the work — context for librarian triage priority, not used by resolution |
+| C | `קובץ מקור` | text | source run identifier |
+| D | `יובא בתאריך` | datetime | ingestion time |
+
+This tab's exact shape depends on the still-open question of what a librarian
+"approves and uploads" for lift (see [Open questions](#open-questions-deferred-not-blocking-this-doc))
+— treat this as a working proposal, not final.
+
+### `לטיפול` — triage tab (formula-only, nothing manually maintained)
+
+A live `QUERY` over the hub tab — no independent data, just a filtered view,
+so it never goes stale on its own:
+
+```
+=QUERY(Hub!A1:M, "select A, G, H, I, J, K, L
+  where H='fail' or J='fail' or L='fail'
+     or (G<>'' and H='') or (I<>'' and J='') or (K<>'' and L='')
+  label A 'שם ספר', G 'מפתח ביקורות', H 'סטטוס ביקורות',
+        I 'מפתח ספרים חדשים', J 'סטטוס ספרים חדשים',
+        K 'מפתח ליפט', L 'סטטוס ליפט'")
+```
+
+(`Hub` stands in for whatever the hub tab is actually named; adjust the range
+if the hub's column order above changes.)
+
+### `לוג` — log tab (script-written, append-only)
+
+Exists today with 5 columns (`זמן, רמה, שם ספר, סטטוס, הערות`) written by
+`log_()`. Needs a 6th column now that three sources can fail, not just
+reviews:
+
+| Col | Header | Type | Notes |
+|---|---|---|---|
+| A | `זמן` | datetime | unchanged |
+| B | `מקור` | text: `ביקורות` / `ספרים חדשים` / `ליפט` | **new** — which source this attempt came from |
+| C | `רמה` | text | unchanged (`error` / `not_found` / `ambiguous`) |
+| D | `שם ספר` | text | unchanged — the raw title attempted |
+| E | `סטטוס` | text | unchanged (`would_fail` / `fail` / `stopped`) |
+| F | `הערות` | text | unchanged — e.g. ambiguous candidate titles |
+
+### `המלצות` — recommendations sheet (published, site-facing)
+
+One row per (seed, recommendation) pair, up to 10 rows per seed, already
+sorted by lift descending (mirrors the existing `עשר_המובילות` ordering):
+
+| Col | Header | Type | Notes |
+|---|---|---|---|
+| A | `מזהה כותר מקור` | text (catalog ID) | the seed book |
+| B | `מזהה כותר מומלץ` | text (catalog ID) | the recommended book |
+| C | `ליפט` | number | e.g. `3.42` |
+| D | `מיקום` | number 1–10 | rank within this seed's list — lets the client trust row order without re-sorting |
+| E | `עודכן בתאריך` | datetime | when this sheet was last (re)generated, for a librarian to judge freshness |
+
+No display title/author/cover here by design — the site resolves both IDs
+against the hub at read time, so this sheet never goes stale relative to the
+hub's own corrections.
+
+### The ingestion Form and its Response sheet
+
+**Form fields** (the librarian-facing side):
+
+1. `קובץ` — file upload, required, restricted to `.csv` (extend to `.xlsx` if
+   the future lift phase needs it)
+2. `סוג קובץ` — dropdown: `ספרים חדשים` / `ליפט`
+3. `הערה` — optional free text, e.g. "דוח יולי–אוגוסט"
+
+**Response sheet** (Google-managed columns, `onFormSubmit` reads this row):
+
+| Col | Header | Type | Notes |
+|---|---|---|---|
+| A | `חותמת זמן` | datetime | auto |
+| B | `כתובת אימייל` | text | present only if the form requires sign-in |
+| C | `קובץ` | Drive file link/ID | the uploaded file |
+| D | `סוג קובץ` | text | the dropdown answer — `onFormSubmit` branches its parser on this |
+| E | `הערה` | text | optional |
 
 ## Open questions (deferred, not blocking this doc)
 
