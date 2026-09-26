@@ -6,3 +6,7 @@ dist-ssr
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+scripts/lift-calculation/*.xlsx
+scripts/lift-calculation/*.csv
+scripts/lift-calculation/.venv/
+scripts/lift-calculation/__pycache__/

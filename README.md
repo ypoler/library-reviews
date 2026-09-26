@@ -88,6 +88,9 @@ A separate catalog-enrichment script (Google Apps Script) can fill a **new**
 sheet from the Agron catalog (cover, summary, genre) using titles from the
 reviews CSVs only. See [`scripts/catalog-enrich/README.md`](scripts/catalog-enrich/README.md).
 
+A local script can turn **loans CSVs** into an Excel file of co-borrowed works
+for librarians (not published). See [`scripts/loan-related/README.md`](scripts/loan-related/README.md).
+
 ### Accessibility toolbar
 
 The [Legilo](https://legilo.eu) widget is fully self-hosted in
